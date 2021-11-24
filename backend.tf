@@ -12,3 +12,4 @@ terraform {
     bucket  = "chyngyzbucket9999"
   }
 }
+

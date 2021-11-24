@@ -50,3 +50,4 @@ resource "aws_instance" "BastionLabInt" {
   }
   #  depends_on = [aws_main_route_table_association.set-master-default-rt-assoc]
 }
+
