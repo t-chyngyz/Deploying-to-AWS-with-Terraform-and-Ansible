@@ -1,3 +1,29 @@
+#Get Linux AMI ID using SSM Parameter endpoint in us-east-1
+data "aws_ssm_parameter" "ApacheLabAmi" {
+  provider = aws.region-lab
+  name     = "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
+}
+
+#Create key-pair for logging into EC2 in us-east-1
+resource "aws_key_pair" "master-key" {
+  provider   = aws.region-lab
+  key_name   = "apache"
+  public_key = file("~/.ssh/id_rsa.pub")
+}
+
+#Create and bootstrap EC2 in us-east-1
+resource "aws_instance" "ApacheLabInt" {
+  provider                        = aws.region-lab
+  ami                             = data.aws_ssm_parameter.ApacheLabAmi.value
+  instance_type                   = var.instance-type
+  key_name                        = aws_key_pair.master-key.key_name
+  vpc_security_group_ids          = [aws_security_group.app-sg.id]
+  subnet_id                       = aws_subnet.subnet_app.id
+  #  provisioner "local-exec" {
+  #    command = <<EOF
+  #aws --profile ${var.profile} ec2 wait instance-status-ok --region ${var.region-master} --instance[user@localhost terraform]$
+[user@localhost terraform]$
+[user@localhost terraform]$ cat network.tf
 provider "aws" {
   profile = var.profile
   region  = var.region-lab
@@ -86,7 +112,7 @@ resource "aws_security_group" "app-sg" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = [aws_subnet.subnet_bastion]
+    cidr_blocks = [aws_subnet.subnet_bastion.cidr_block]
   }
   ingress {
     description     = "allow traffic from LB on port 80"
@@ -108,7 +134,7 @@ resource "aws_security_group" "app-sg" {
 #Create SG for allowing TCP/80 from * and TCP/22 from your IP in us-east-1
 resource "aws_security_group" "bastion-sg" {
   provider    = aws.region-lab
-  name        = "app-sg"
+  name        = "bastion-sg"
   description = "Allow TCP/80 & TCP/22"
   vpc_id      = aws_vpc.vpc_useast.id
   ingress {

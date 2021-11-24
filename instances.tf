@@ -13,42 +13,40 @@ resource "aws_key_pair" "master-key" {
 
 #Create and bootstrap EC2 in us-east-1
 resource "aws_instance" "ApacheLabInt" {
-  provider                    = aws.region-lab
-  ami                         = data.aws_ssm_parameter.ApacheLabAmi.value
-  instance_type               = var.instance-type
-  key_name                    = aws_key_pair.master-key.key_name
-  vpc_security_group_ids      = [aws_security_group.app-sg.id]
-  subnet_id                   = aws_subnet.subnet_app.id
-  #ecs_associate_public_ip_address = "false"
-#  provisioner "local-exec" {
-#    command = <<EOF
-#aws --profile ${var.profile} ec2 wait instance-status-ok --region ${var.region-master} --instance-ids ${self.id} \
-#&& ansible-playbook --extra-vars 'passed_in_hosts=tag_Name_${self.tags.Name}' ansible_templates/install_jenkins.yaml
-#EOF
-#  }
+  provider                        = aws.region-lab
+  ami                             = data.aws_ssm_parameter.ApacheLabAmi.value
+  instance_type                   = var.instance-type
+  key_name                        = aws_key_pair.master-key.key_name
+  vpc_security_group_ids          = [aws_security_group.app-sg.id]
+  subnet_id                       = aws_subnet.subnet_app.id
+  #  provisioner "local-exec" {
+  #    command = <<EOF
+  #aws --profile ${var.profile} ec2 wait instance-status-ok --region ${var.region-master} --instance-ids ${self.id} \
+  #&& ansible-playbook --extra-vars 'passed_in_hosts=tag_Name_${self.tags.Name}' ansible_templates/install_jenkins.yaml
+  #EOF
+  #  }
   tags = {
     Name = "apache_tf"
   }
-#  depends_on = [aws_main_route_table_association.set-master-default-rt-assoc]
+  #  depends_on = [aws_main_route_table_association.set-master-default-rt-assoc]
 }
 
 #Create and bootstrap EC2 in us-east-1
 resource "aws_instance" "BastionLabInt" {
-  provider                    = aws.region-lab
-  ami                         = data.aws_ssm_parameter.ApacheLabAmi.value
-  instance_type               = var.instance-type
-  key_name                    = aws_key_pair.master-key.key_name
-  vpc_security_group_ids      = [aws_security_group.bastion-sg.id]
-  subnet_id                   = aws_subnet.subnet_bastion.id
-  #ecs_associate_public_ip_address = "true"
-#  provisioner "local-exec" {
-#    command = <<EOF
-#aws --profile ${var.profile} ec2 wait instance-status-ok --region ${var.region-master} --instance-ids ${self.id} \
-#&& ansible-playbook --extra-vars 'passed_in_hosts=tag_Name_${self.tags.Name}' ansible_templates/install_jenkins.yaml
-#EOF
-#  }
+  provider                        = aws.region-lab
+  ami                             = data.aws_ssm_parameter.ApacheLabAmi.value
+  instance_type                   = var.instance-type
+  key_name                        = aws_key_pair.master-key.key_name
+  vpc_security_group_ids          = [aws_security_group.bastion-sg.id]
+  subnet_id                       = aws_subnet.subnet_bastion.id
+  #  provisioner "local-exec" {
+  #    command = <<EOF
+  #aws --profile ${var.profile} ec2 wait instance-status-ok --region ${var.region-master} --instance-ids ${self.id} \
+  #&& ansible-playbook --extra-vars 'passed_in_hosts=tag_Name_${self.tags.Name}' ansible_templates/install_jenkins.yaml
+  #EOF
+  #  }
   tags = {
     Name = "bastion_tf"
   }
-#  depends_on = [aws_main_route_table_association.set-master-default-rt-assoc]
+  #  depends_on = [aws_main_route_table_association.set-master-default-rt-assoc]
 }
