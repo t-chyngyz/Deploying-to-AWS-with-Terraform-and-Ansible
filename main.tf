@@ -113,7 +113,7 @@ resource "aws_route_table" "prv_sub1_rt" {
 
   route {
     cidr_block = "0.0.0.0/0"
-    instance_id = aws_instance.NatInstance.id
+    nat_gateway_id = aws_nat_gateway.nat_gateway.id
   }
 
   tags = {
@@ -121,6 +121,24 @@ resource "aws_route_table" "prv_sub1_rt" {
     Name    = "private subnet route table"
   }
 }
+
+
+#######################################
+#NAT gateway
+resource "aws_eip" "nat_eip" {
+  vpc = true
+}
+
+resource "aws_nat_gateway" "nat_gateway" {
+  allocation_id = aws_eip.nat_eip.id
+  subnet_id = aws_subnet.pub_sub1.id
+  tags = {
+    "Name" = "DummyNatGateway"
+  }
+}
+
+
+
 
 # Create route table association of public subnet1
 resource "aws_route_table_association" "internet_for_priv_sub1" {
