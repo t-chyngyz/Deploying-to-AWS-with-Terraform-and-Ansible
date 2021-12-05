@@ -1,11 +1,3 @@
-variable "ami" {
-  type    = string
-  default = "ami-06c7e3ecba3661a89"
-
-}
-variable "keyname" {
-  default = "apache"
-}
 variable "region" {
   type        = string
   default     = "eu-central-1"
@@ -67,9 +59,19 @@ variable "sg_ws_name" {
   default = "webserver_sg"
 }
 
+variable "sg_db_name" {
+  type    = string
+  default = "RDS_sg"
+}
+
 variable "sg_ws_description" {
   type    = string
   default = "SG for web server"
+}
+
+variable "sg_db_description" {
+  type    = string
+  default = "SG for RDS server"
 }
 
 variable "sg_ws_tagname" {
@@ -85,4 +87,24 @@ variable "profile" {
 variable "instance-type" {
   type    = string
   default = "t2.micro"
+}
+
+variable "db-instance-type" {
+  type    = string
+  default = "db.t2.micro"
+}
+
+variable "app-port" {
+  type    = number
+  default = 80
+}
+
+variable "db-port" {
+  type    = number
+  default = 3306
+}
+
+variable "ssh-port" {
+  type    = number
+  default = 22
 }

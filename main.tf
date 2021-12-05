@@ -65,6 +65,15 @@ resource "aws_subnet" "prv_sub2" {
   }
 }
 
+resource "aws_db_subnet_group" "RDS_subnet_group" {
+name = "mydbsg"
+subnet_ids = ["${aws_subnet.prv_sub1.id}", "${aws_subnet.prv_sub2.id}"]
+tags = {
+Name = "my_database_subnet_group"
+}
+}
+
+####################################
 # Create Internet Gateway
 
 resource "aws_internet_gateway" "igw" {
@@ -112,7 +121,7 @@ resource "aws_route_table" "prv_sub1_rt" {
   vpc_id = aws_vpc.main.id
 
   route {
-    cidr_block = "0.0.0.0/0"
+    cidr_block     = "0.0.0.0/0"
     nat_gateway_id = aws_nat_gateway.nat_gateway.id
   }
 
@@ -131,13 +140,11 @@ resource "aws_eip" "nat_eip" {
 
 resource "aws_nat_gateway" "nat_gateway" {
   allocation_id = aws_eip.nat_eip.id
-  subnet_id = aws_subnet.pub_sub1.id
+  subnet_id     = aws_subnet.pub_sub1.id
   tags = {
     "Name" = "DummyNatGateway"
   }
 }
-
-
 
 
 # Create route table association of public subnet1
@@ -161,8 +168,8 @@ resource "aws_security_group" "elb_sg" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    from_port   = 80
-    to_port     = 80
+    from_port   = var.app-port
+    to_port     = var.app-port
     protocol    = "tcp"
     description = "HTTP"
     cidr_blocks = ["0.0.0.0/0"]
@@ -190,8 +197,8 @@ resource "aws_security_group" "webserver_sg" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    from_port   = 80
-    to_port     = 80
+    from_port   = var.app-port
+    to_port     = var.app-port
     protocol    = "tcp"
     description = "HTTP"
     cidr_blocks = ["0.0.0.0/0"]
@@ -199,8 +206,8 @@ resource "aws_security_group" "webserver_sg" {
   }
 
   ingress {
-    from_port   = 22
-    to_port     = 22
+    from_port   = var.ssh-port
+    to_port     = var.ssh-port
     protocol    = "tcp"
     description = "HTTP"
     cidr_blocks = ["0.0.0.0/0"]
@@ -219,27 +226,72 @@ resource "aws_security_group" "webserver_sg" {
   }
 }
 
+#######################################
+# Create security group for RDS
+
+resource "aws_security_group" "db_sg" {
+  name        = var.sg_db_name
+  description = var.sg_db_description
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port   = var.db-port
+    to_port     = var.db-port
+    protocol    = "tcp"
+    description = "HTTP"
+    cidr_blocks = ["0.0.0.0/0"]
+
+  }
+
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+
+  tags = {
+    Name    = var.sg_ws_tagname
+    Project = "demo-assignment"
+  }
+}
+
+##################################################
+resource "aws_db_instance" "Demo-RDS-tf" {
+  allocated_storage      = 20
+  storage_type           = "gp2"
+  engine                 = "mysql"
+  engine_version         = "5.7"
+  instance_class         = var.db-instance-type
+  port                   = var.db-port
+  vpc_security_group_ids = ["${aws_security_group.db_sg.id}"]
+  db_subnet_group_name   = "${aws_db_subnet_group.RDS_subnet_group.name}"
+  name                   = "mydb"
+  identifier             = "mysqldb"
+  username               = "myuser"
+  password               = "mypassword"
+  parameter_group_name   = "default.mysql5.7"
+  skip_final_snapshot    = true
+  tags = {
+    Name = "my_database_instance"
+  }
+}
+
 
 #Get Linux AMI ID using SSM Parameter endpoint
 data "aws_ssm_parameter" "ApacheLabAmi" {
-  name     = "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
+  name = "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
 }
 
 #Create and bootstrap EC2 in us-east-1
-resource "aws_instance" "NatInstance" {
-  ami                             = data.aws_ssm_parameter.ApacheLabAmi.value
-  instance_type                   = var.instance-type
-  key_name                        = "aws_key"
-#  key_name                        = aws_key_pair.master-key.key_name
-  vpc_security_group_ids          = [aws_security_group.webserver_sg.id]
-  subnet_id                       = aws_subnet.pub_sub1.id
-  user_data = filebase64("${path.module}/snat.sh")
-  #  provisioner "local-exec" {
-  #    command = <<EOF
-  #sudo sysctl -w net.ipv4.ip_forward=1 && sudo /sbin/iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-  #&& sudo yum install iptables-services && sudo service iptables save
-  #EOF
-  #  }
+resource "aws_instance" "Bastion-Host" {
+  ami                    = data.aws_ssm_parameter.ApacheLabAmi.value
+  instance_type          = var.instance-type
+  key_name               = "aws_key"
+  vpc_security_group_ids = [aws_security_group.webserver_sg.id]
+  subnet_id              = aws_subnet.pub_sub1.id
+  user_data              = filebase64("${path.module}/snat.sh")
   tags = {
     Name = "nat_tf"
   }
@@ -267,7 +319,6 @@ resource "aws_launch_configuration" "webserver-launch-config" {
     volume_size = 5
     encrypted   = true
   }
-
 
   lifecycle {
     create_before_destroy = true
