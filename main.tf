@@ -284,6 +284,7 @@ data "aws_ssm_parameter" "ApacheLabAmi" {
   name = "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
 }
 
+#########################################
 #Create and bootstrap EC2 in us-east-1
 resource "aws_instance" "Bastion-Host" {
   ami                    = data.aws_ssm_parameter.ApacheLabAmi.value
@@ -291,14 +292,21 @@ resource "aws_instance" "Bastion-Host" {
   key_name               = "aws_key"
   vpc_security_group_ids = [aws_security_group.webserver_sg.id]
   subnet_id              = aws_subnet.pub_sub1.id
-  user_data              = filebase64("${path.module}/snat.sh")
+
+  connection {
+    type = "ssh"
+    user = "ec2-user"
+    private_key = "aws_key.pem"
+    host     = self.public_ip
+  }
+
   tags = {
-    Name = "nat_tf"
+    Name = "bastion_tf"
   }
   #  depends_on = [aws_main_route_table_association.set-master-default-rt-assoc]
 }
 
-
+################################################################
 #Create Launch config
 resource "aws_launch_configuration" "webserver-launch-config" {
   name_prefix     = "webserver-launch-config"
@@ -313,13 +321,18 @@ resource "aws_launch_configuration" "webserver-launch-config" {
     encrypted   = true
   }
 
-  ebs_block_device {
-    device_name = "/dev/sdf"
-    volume_type = "gp2"
-    volume_size = 5
-    encrypted   = true
+  provisioner "file" { #copy the index file form local to remote
+    source      = "index.php"
+    destination = "/tmp/index.php"
   }
-
+  connection {
+    type = "ssh"
+    user = "ubuntu"
+    private_key = "aws_key.pem"
+    host = "self.private_ip"
+    bastion_host = "${aws_instance.Bastion-Host.public_ip}"
+    bastion_user = "ec2-user"
+  }
   lifecycle {
     create_before_destroy = true
   }
@@ -356,7 +369,7 @@ resource "aws_lb_target_group" "TG-tf" {
   vpc_id     = aws_vpc.main.id
   health_check {
     interval            = 70
-    path                = "/index.html"
+    path                = "/index.php"
     port                = 80
     healthy_threshold   = 2
     unhealthy_threshold = 2
