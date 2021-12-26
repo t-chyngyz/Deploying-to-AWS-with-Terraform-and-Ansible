@@ -66,11 +66,11 @@ resource "aws_subnet" "prv_sub2" {
 }
 
 resource "aws_db_subnet_group" "RDS_subnet_group" {
-name = "mydbsg"
-subnet_ids = ["${aws_subnet.prv_sub1.id}", "${aws_subnet.prv_sub2.id}"]
-tags = {
-Name = "my_database_subnet_group"
-}
+  name       = "mydbsg"
+  subnet_ids = ["${aws_subnet.prv_sub1.id}", "${aws_subnet.prv_sub2.id}"]
+  tags = {
+    Name = "my_database_subnet_group"
+  }
 }
 
 ####################################
@@ -266,7 +266,7 @@ resource "aws_db_instance" "Demo-RDS-tf" {
   instance_class         = var.db-instance-type
   port                   = var.db-port
   vpc_security_group_ids = ["${aws_security_group.db_sg.id}"]
-  db_subnet_group_name   = "${aws_db_subnet_group.RDS_subnet_group.name}"
+  db_subnet_group_name   = aws_db_subnet_group.RDS_subnet_group.name
   name                   = "mydb"
   identifier             = "mysqldb"
   username               = "myuser"
@@ -294,10 +294,10 @@ resource "aws_instance" "Bastion-Host" {
   subnet_id              = aws_subnet.pub_sub1.id
 
   connection {
-    type = "ssh"
-    user = "ec2-user"
+    type        = "ssh"
+    user        = "ec2-user"
     private_key = "aws_key.pem"
-    host     = self.public_ip
+    host        = self.public_ip
   }
 
   tags = {
@@ -326,11 +326,11 @@ resource "aws_launch_configuration" "webserver-launch-config" {
     destination = "/tmp/index.php"
   }
   connection {
-    type = "ssh"
-    user = "ubuntu"
-    private_key = "aws_key.pem"
-    host = "self.private_ip"
-    bastion_host = "${aws_instance.Bastion-Host.public_ip}"
+    type         = "ssh"
+    user         = "ubuntu"
+    private_key  = "aws_key.pem"
+    host         = "self.private_ip"
+    bastion_host = aws_instance.Bastion-Host.public_ip
     bastion_user = "ec2-user"
   }
   lifecycle {
