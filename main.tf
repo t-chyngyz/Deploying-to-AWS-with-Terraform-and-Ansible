@@ -267,10 +267,10 @@ resource "aws_db_instance" "Demo-RDS-tf" {
   port                   = var.db-port
   vpc_security_group_ids = ["${aws_security_group.db_sg.id}"]
   db_subnet_group_name   = "${aws_db_subnet_group.RDS_subnet_group.name}"
-  name                   = "mydb"
-  identifier             = "mysqldb"
-  username               = "myuser"
-  password               = "mypassword"
+  name                   = var.database-name
+  identifier             = var.database-identifier
+  username               = var.database-username
+  password               = var.database-password
   parameter_group_name   = "default.mysql5.7"
   skip_final_snapshot    = true
   tags = {
@@ -291,7 +291,7 @@ data "aws_ssm_parameter" "BastionUbuntu" {
 #########################################
 #Create and bootstrap EC2 in us-east-1
 resource "aws_instance" "Bastion-Host" {
-  ami                    = "ami-0d527b8c289b4af7f"
+  ami                    = data.aws_ssm_parameter.BastionUbuntu.value #"ami-0d527b8c289b4af7f"
   instance_type          = var.instance-type
   key_name               = "aws_key"
   vpc_security_group_ids = [aws_security_group.webserver_sg.id]
@@ -310,11 +310,23 @@ resource "aws_instance" "Bastion-Host" {
   #  depends_on = [aws_main_route_table_association.set-master-default-rt-assoc]
 }
 
+
+################################################################
+data "template_file" "init" {
+  template = "${file("${path.module}/init_webserver.sh")}"
+  vars = {
+    database_host = "${aws_db_instance.Demo-RDS-tf.address}"
+    database_username = "${var.database-username}"
+    database_password = "${var.database-password}"
+    database_name = "${var.database-name}"
+  }
+}
+
 ################################################################
 #Create Launch config
 resource "aws_launch_configuration" "webserver-launch-config" {
   name_prefix     = "webserver-launch-config"
-  image_id        = data.aws_ssm_parameter.ApacheLabAmi.value
+  image_id        = data.aws_ssm_parameter.BastionUbuntu.value
   instance_type   = var.instance-type
   key_name        = "aws_key"
   security_groups = ["${aws_security_group.webserver_sg.id}"]
@@ -325,18 +337,6 @@ resource "aws_launch_configuration" "webserver-launch-config" {
     encrypted   = true
   }
 
-  provisioner "file" { #copy the index file form local to remote
-    source      = "index.php"
-    destination = "/tmp/index.php"
-  }
-  connection {
-    type = "ssh"
-    user = "ec2-user"
-    private_key = file("${path.module}/aws_key.pem")
-    host = "self.private_ip"
-    bastion_host = "${aws_instance.Bastion-Host.public_ip}"
-    bastion_user = "ubuntu"
-  }
   lifecycle {
     create_before_destroy = true
   }

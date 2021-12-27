@@ -108,3 +108,23 @@ variable "ssh-port" {
   type    = number
   default = 22
 }
+
+variable "database-name"{
+  type = string
+  default = "mydb"
+}
+
+variable "database-identifier"{
+  type = string
+  default = "mysqldb"
+}
+
+variable "database-username"{
+  type = string
+  default = "myuser"
+}
+
+variable "database-password"{
+  type = string
+  default = "mypassword"
+}
