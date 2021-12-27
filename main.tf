@@ -340,7 +340,8 @@ resource "aws_launch_configuration" "webserver-launch-config" {
   lifecycle {
     create_before_destroy = true
   }
-  user_data = filebase64("${path.module}/init_webserver.sh")
+  #user_data = filebase64("${path.module}/init_webserver.sh")
+  user_data = "${data.template_file.init.rendered}"
 }
 
 
